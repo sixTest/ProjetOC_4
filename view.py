@@ -3,13 +3,92 @@ import os
 import pdb
 
 
-def align(first_strings, string_center, last_strings):
-    string = ''
-    max_len_first = max([ len(s) for s in first_strings])
-    for i in range(len(first_strings)):
-        diff_len = max_len_first - len(first_strings[i]) + 1
-        string += first_strings[i]+diff_len*' '+string_center+' '+last_strings[i]+'\n'
-    return string
+def format_output(champs, empty_counts, placements):
+    strings = []
+    len_max_champs = [max([len(s) for s in champs[i]]) for i in range(len(champs))]
+    for i in range(len(champs[0])):
+        string = ''
+        for index_champ in range(len(champs)):
+            value = champs[index_champ][i]
+            max_len = len_max_champs[index_champ]
+            empty_count = empty_counts[index_champ]
+            placement = placements[index_champ]
+            string+=f"{value:{placement}{max_len + empty_count}}"
+        strings.append(string)
+
+    return '\n'.join(strings)
+
+
+def format_output_matches(players_1, players_2, scores_1, scores_2):
+    champ1 = [p.last_name+' '+p.first_name for p in players_1]
+    champ2 = len(champ1)*['VS']
+    champ3 = [p.last_name+' '+p.first_name for p in players_2]
+    champ4 = len(champ1)*[':']
+    champ5 = [f'({scores_1[i]}, {scores_2[i]})' for i in range(len(champ1))]
+    empty_counts = [3,3,3,3,0]
+    placements = 5*['<']
+    return format_output([champ1,champ2,champ3,champ4,champ5],empty_counts,placements)
+
+
+def format_output_players_in_tournament(docs_id, players):
+    champ1 = [f'* ({doc_id})' for doc_id in docs_id]
+    champ2 = [p.last_name+' '+p.first_name for p in players]
+    champ3 = [f'Classement {p.ranking},' for p in players]
+    champ4 = [f'Points {p.points}' for p in players]
+    empty_counts = [3, 3, 3, 0]
+    placements = 4 * ['<']
+    return format_output([champ1, champ2, champ3, champ4], empty_counts, placements)
+
+
+def format_output_players_in_database(docs_id, players):
+    champ1 = [f'* ({doc_id})' for doc_id in docs_id]
+    champ2 = [p.last_name+' '+p.first_name for p in players]
+    champ3 = [f'Classement {p.ranking}' for p in players]
+    empty_counts = [3, 3, 0]
+    placements = 3 * ['<']
+    return format_output([champ1, champ2, champ3], empty_counts, placements)
+
+
+def format_output_tournaments(docs_id, tournaments):
+    champ1 = [f'* ({doc_id})' for doc_id in docs_id]
+    champ2 = [tournament.name for tournament in tournaments]
+    champ3 = [tournament.location for tournament in tournaments]
+    champ4 = [tournament.date for tournament in tournaments]
+    empty_counts = [3, 3, 3, 0]
+    placements = 4 * ['<']
+    return format_output([champ1, champ2, champ3, champ4], empty_counts, placements)
+
+
+def format_output_last_command(key_cmd, name_command):
+    return f'Derniere action utilisateur : ({key_cmd}) {name_command}'
+
+
+def format_output_round(round):
+    return f'{round.name} Début : {round.start_date} Fin {round.end_date}.\n'
+
+
+def format_output_tournament(tournament):
+    return f' * Nom du tournoi             : {tournament.name}\n' \
+           f' * Lieu du tournoi            : {tournament.location}\n' \
+           f' * Date du tournoi            : {tournament.date}\n' \
+           f' * Nombre de tours du tournoi : {tournament.numbers_rounds}\n' \
+           f' * Description du tournoi     : {tournament.description}\n' \
+           f' * Indices des joueurs        : {tournament.indices_players}\n'
+
+
+def format_output_creation_player(player):
+    return f' * Nom du joueur               : {player.last_name}\n' \
+           f' * Prénom du joueur            : {player.first_name}\n' \
+           f' * Sexe du joueur              : {player.gender}\n' \
+           f' * Date de naissance du joueur : {player.birthdate}\n' \
+           f' * Classement du joueur        : {player.ranking}\n'
+
+
+def format_output_rounds(rounds):
+    output = ''
+    for round in rounds:
+        output += format_output_round(round)
+    return output
 
 
 def format_input_parameters(input_name):
@@ -36,73 +115,8 @@ def format_error(err):
     return f'Erreur : {err}'
 
 
-def format_choice_tournament(doc_id, tournament):
-    return f'* ({doc_id}) {tournament.name} / {tournament.location} / {tournament.date}'
-
-
-def format_choice_player(doc_id, player):
-    return f'* ({doc_id}) {player.last_name} / {player.first_name} / {player.ranking}'
-
-
-def format_output_last_command(key_cmd, name_command):
-    return f'Derniere action utilisateur : ({key_cmd}) {name_command}'
-
-
-def format_output_tournament(tournament):
-    return f' * Nom du tournoi             : {tournament.name}\n' \
-           f' * Lieu du tournoi            : {tournament.location}\n' \
-           f' * Date du tournoi            : {tournament.date}\n' \
-           f' * Nombre de tours du tournoi : {tournament.numbers_rounds}\n' \
-           f' * Description du tournoi     : {tournament.description}\n' \
-           f' * Joueurs                    : {tournament.indices_players}\n'
-
-
-def format_output_creation_player(player):
-    return f' * Nom du joueur               : {player.last_name}\n' \
-           f' * Prénom du joueur            : {player.first_name}\n' \
-           f' * Sexe du joueur              : {player.gender}\n' \
-           f' * Date de naissance du joueur : {player.birthdate}\n' \
-           f' * Classement du joueur        : {player.ranking}\n'
-
-
-def format_output_players(doc_ids, players):
-    output = ''
-    for i in range(len(doc_ids)):
-        output += format_choice_player(doc_ids[i], players[i])+'\n'
-    return output
-
-
-def format_output_tournaments(doc_ids, tournaments):
-    output = ''
-    for i in range(len(doc_ids)):
-        output += format_choice_tournament(doc_ids[i], tournaments[i])+'\n'
-    return output
-
-
-def format_output_creation_round(round_name, pairings):
-    names_players_p1 = []
-    ranking_point_player_p1 = []
-    names_players_p2 = []
-    ranking_point_player_p2 = []
-    center = 'VS'
-    string = []
-    for p1,p2 in pairings:
-        names_players_p1.append(f'{p1.last_name} {p1.first_name}')
-        ranking_point_player_p1.append(f'(Classement {p1.ranking}, Point {p1.points})')
-        names_players_p2.append(f'{p2.last_name} {p2.first_name}')
-        ranking_point_player_p2.append(f'(Classement {p2.ranking}, Point {p2.points})')
-
-    max_len_names_p1 = max([len(s) for s in names_players_p1])
-    max_len_names_p2 = max([len(s) for s in names_players_p2])
-
-    for i in range(len(names_players_p1)):
-        diff = max_len_names_p1 - len(names_players_p1[i]) + 3
-        string1 = names_players_p1[i]+diff*' '+ranking_point_player_p1[i]
-        diff = max_len_names_p2 - len(names_players_p2[i]) + 3
-        string2 = names_players_p2[i]+diff*' '+ranking_point_player_p2[i]
-        string.append(string1 + '  VS  '+string2)
-
-    return f'{round_name}\n'+'\n'.join(string)
+def format_information(information):
+    return f'Information : {information}'
 
 
 def get_input_with_repetition(input_str, check_function, params):
@@ -172,11 +186,9 @@ def show_output(key_cmd, function_name, function, params):
 
 
 def show_tournaments_choices(docs_id, tournaments):
-    for i in range(len(docs_id)):
-        print(format_choice_tournament(docs_id[i], tournaments[i]))
+    print(format_output_tournaments(docs_id, tournaments))
 
 
 def show_players_choices(docs_id, players):
-    for i in range(len(docs_id)):
-        print(format_choice_player(docs_id[i], players[i]))
+    print(format_output_players_in_database(docs_id, players))
 

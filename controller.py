@@ -4,6 +4,7 @@ import datetime
 import os
 import view
 import pdb
+import time
 
 
 class InputError(Exception):
@@ -182,6 +183,13 @@ def check_param_cmd_show_players_is_valid(param):
     return param
 
 
+def sort_players(param, players):
+    if param == 'A':
+        players.sort(key=lambda player: player.last_name)
+    else:
+        players.sort(key=lambda player: player.ranking, reverse=True)
+
+
 def check_if_result_is_valid(result):
     if not check_if_input_is_in(result, ('1', '0', '0.5')):
         raise InputResultError()
@@ -204,10 +212,12 @@ class Controller(object):
         self.sub_menu = {0: ('Importer des joueurs dans le tournoi', self.select_players),
                          1: ('Exporter ce tournoi', self.export_tournament),
                          2: ('Afficher tous les joueurs du tournoi', self.show_players),
-                         3: ('Créer un nouveau round', self.create_round),
-                         4: ('Cloturer le round', self.set_results),
-                         5: ('Retour', self.return_to_main_menu),
-                         6: ('Quitter', self.exit)}
+                         3: ('Afficher les rounds', self.show_rounds),
+                         4: ('Afficher les matchs', self.show_matches),
+                         5: ('Créer un nouveau round', self.create_round),
+                         6: ('Cloturer le round', self.close_round),
+                         7: ('Retour', self.return_to_main_menu),
+                         8: ('Quitter', self.exit)}
 
         self.output_function = None
         self.output_params = None
@@ -239,17 +249,19 @@ class Controller(object):
     def get_keys_commands_available(self):
         return [k for k, v in self.get_menu().items()]
 
+    def set_output(self, output_function, output_params):
+        self.output_function = output_function
+        self.output_params = output_params
+
     def create_tournament(self):
         tournament = model.Tournament(*view.get_inputs_for_tournament_parameters())
         try:
             self.db.check_if_tournament_already_exist(tournament)
             self.focus_tournament = tournament
             self.focus_tournament_doc_id = None
-            self.output_function = view.format_output_tournament
-            self.output_params = self.focus_tournament
+            self.set_output(view.format_output_tournament, self.focus_tournament)
         except model.DataBaseTinyDBError as e:
-            self.output_function = view.format_error
-            self.output_params = e
+            self.set_output(view.format_error, e)
 
     def select_tournament(self):
         os.system('cls')
@@ -258,8 +270,7 @@ class Controller(object):
                                 self.db.get_tournaments_docs_id(), view.format_input_choice)
         self.focus_tournament = self.db.get_tournament_by_id(doc_id)
         self.focus_tournament_doc_id = doc_id
-        self.output_function = view.format_output_tournament
-        self.output_params = self.focus_tournament
+        self.set_output(view.format_output_tournament, self.focus_tournament)
 
     def select_players(self):
         os.system('cls')
@@ -270,11 +281,9 @@ class Controller(object):
                                  view.format_input_choice)
         try:
             self.focus_tournament.add_indexes_players(doc_ids)
-            self.output_function = view.format_output_players
-            self.output_params = (doc_ids, [self.db.get_player_by_id(doc_id) for doc_id in doc_ids])
+            self.set_output(view.format_output_players_in_database, (doc_ids, [self.db.get_player_by_id(doc_id) for doc_id in doc_ids]))
         except model.TooManyPlayersError as e:
-            self.output_function = view.format_error
-            self.output_params = e
+            self.set_output(view.format_error, e)
 
     def return_to_main_menu(self):
         self.focus_tournament = None
@@ -285,11 +294,9 @@ class Controller(object):
         try:
             self.db.check_if_player_already_exist(player)
             self.db.add_player(player)
-            self.output_function = view.format_output_creation_player
-            self.output_params = player
+            self.set_output(view.format_output_creation_player, player)
         except model.DataBaseTinyDBError as e:
-            self.output_function = view.format_error
-            self.output_params = e
+            self.set_output(view.format_error, e)
 
     def reset_output(self):
         self.output_function = None
@@ -305,48 +312,68 @@ class Controller(object):
             self.db.add_tournament(self.focus_tournament)
 
     def show_tournaments_in_database(self):
-        self.output_function = view.format_output_tournaments
         doc_ids = self.db.get_tournaments_docs_id()
         tournaments = [self.db.get_tournament_by_id(doc_id) for doc_id in doc_ids]
-        self.output_params = (doc_ids, tournaments)
+        self.set_output(view.format_output_tournaments, (doc_ids, tournaments))
 
     def show_players(self):
-        param = view.get_input('Choisissez un parametre entre tri alphabétique (A) ou Classement (C)',
-                               check_param_cmd_show_players_is_valid, format_view=view.format_input_parameters)
-        db = self.focus_tournament.indices_players if self.focus_tournament else self.db.get_players_docs_id()
-        players = [self.db.get_player_by_id(doc_id) for doc_id in db]
-        if param == 'A':
-            players.sort(key=lambda player: player.last_name)
-        else:
-            players.sort(key=lambda player: player.ranking, reverse=True)
-        doc_ids = [self.db.get_doc_id_by_player(player) for player in players]
-        self.output_function = view.format_output_players
-        self.output_params = (doc_ids, players)
+        try:
+            param = view.get_input('Choisissez un parametre entre tri alphabétique (A) ou Classement (C)',
+                                   check_param_cmd_show_players_is_valid, format_view=view.format_input_parameters)
+            if self.focus_tournament:
+                players = self.focus_tournament.get_players()
+                output_function = view.format_output_players_in_tournament
+            else:
+                players = [self.db.get_player_by_id(doc_id) for doc_id in self.db.get_players_docs_id()]
+                output_function = view.format_output_players_in_database
+            sort_players(param, players)
+            doc_ids = [self.db.get_doc_id_by_player(player) for player in players]
+            self.set_output(output_function, (doc_ids, players))
+        except model.PlayersEmptyError as e:
+            self.set_output(view.format_information, e)
 
     def create_round(self):
         try:
             name = view.get_input('Nom du round', check_if_input_is_empty, format_view=view.format_input_parameters)
-            self.focus_tournament.create_first_round(name)
-            self.output_function = view.format_output_creation_round
-            self.output_params = (name, self.focus_tournament.get_pair())
-        except model.NotEnoughPlayersError as e:
-            self.output_function = view.format_error
-            self.output_params = e
+            self.focus_tournament.create_round(name)
+            self.set_output(view.format_output_round, self.focus_tournament.get_last_round())
+        except model.TournamentError as e:
+            self.set_output(view.format_error, e)
 
-    def set_results(self):
+    def close_round(self):
         try:
-            round = self.focus_tournament.rounds[-1]
-            round.check_if_close()
-            for match in round.matchs:
-                p1 = match[0][0]
-                p2 = match[1][0]
+            round = self.focus_tournament.get_last_round()
+            while round.get_index_match_to_set_result() is not None:
+                index_match = round.get_index_match_to_set_result()
+                p1, p2 = round.get_players_in_match(index_match)
                 name_p1 = p1.last_name + ' ' + p1.first_name
-                result = view.get_input(f'Entrez le résultat de {name_p1} : ', check_if_result_is_valid,
-                                        format_view=view.format_input_parameters)
-                round.set_result(p1, p2, result)
-            round.close_round()
-            self.output_function = view.format_output_creation_round
-            self.output_params = (round.name, self.focus_tournament.get_pair())
-        except model.RoundClosedError as e:
-            self.output_function = view.format_error
-            self.output_params = e
+                score_1 = view.get_input(f'Entrez le résultat de {name_p1} : ', check_if_result_is_valid,
+                                         format_view=view.format_input_parameters)
+                round.set_result(p1, p2, score_1, index_match)
+            self.focus_tournament.close_round()
+            self.show_matches()
+        except (model.RoundError, model.TournamentError) as e:
+            self.set_output(view.format_error, e)
+
+    def show_rounds(self):
+        try:
+            self.set_output(view.format_output_rounds, self.focus_tournament.get_rounds())
+        except model.RoundNotExistError as e:
+            self.set_output(view.format_information, e)
+
+    def show_matches(self):
+        try:
+            players_1 = []
+            players_2 = []
+            scores_1 = []
+            scores_2 = []
+            rounds = self.focus_tournament.get_rounds()
+            for round in rounds:
+                for (p1,s1), (p2,s2) in round.matches:
+                    players_1.append(p1)
+                    scores_1.append(s1)
+                    players_2.append(p2)
+                    scores_2.append(s2)
+            self.set_output(view.format_output_matches, (players_1, players_2, scores_1, scores_2))
+        except model.RoundNotExistError as e:
+            self.set_output(view.format_information, e)
