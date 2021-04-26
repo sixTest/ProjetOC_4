@@ -139,7 +139,7 @@ class RoundPairingError(RoundError):
 def get_date():
     """
     Récupère la date du moment.
-    :return: instance de classe datetime
+    :return: instance de class datetime
     """
     now = datetime.datetime.now()
     return datetime.datetime(now.year, now.month, now.day, now.hour, now.minute)
@@ -160,7 +160,8 @@ def get_scores_player_2(s1):
 def get_all_offsets():
     """
     Récupère l'ensemble des décalages possibles sur 8 joueurs.
-    :return: liste contenant des tuples contenant des int
+    :return: list[tuple[int]], chaque tuple représente un ensemble de décalages pour l'association des pairs de joueurs
+    pour un round.
     """
     offsets = []
     for a in range(7):
@@ -174,7 +175,7 @@ def get_all_offsets():
 def serialized_tournament(tournament):
     """
     Sérialise une instance de tournoi.
-    :param tournament: instance de classe Tournament
+    :param tournament: instance de tournoi
     :return: dictionnaire
     """
     return {'name': tournament.name, 'location': tournament.location, 'date': tournament.date,
@@ -186,7 +187,7 @@ def serialized_tournament(tournament):
 def serialized_player(player):
     """
     Sérialise une instance de joueur.
-    :param player: instance de classe Player
+    :param player: instance de joueur
     :return: dictionnaire
     """
     return {'last_name': player.last_name, 'first_name': player.first_name, 'gender': player.gender,
@@ -196,7 +197,7 @@ def serialized_player(player):
 def serialized_round(round):
     """
     Sérialise une instance de round
-    :param round: instance de classe Round
+    :param round: instance de round
     :return: dictionnaire
     """
     return {'name': round.name, 'start_date': str(round.start_date), 'end_date': str(round.end_date),
@@ -218,7 +219,7 @@ class DataBaseTinyDB(object):
     def add_tournament(self, tournament):
         """
         Ajoute un tournoi en base de données et retourne son index.
-        :param tournament: instance de classe Tournament
+        :param tournament: instance de tournoi
         :return: int
         """
         return self.tournaments_table.insert(serialized_tournament(tournament))
@@ -226,7 +227,7 @@ class DataBaseTinyDB(object):
     def get_tournaments(self):
         """
         Récupère l'ensemble des tournois de la base de données.
-        :return: liste contenant des instances de classe Tournament
+        :return: list[Tournament]
         """
         return [Tournament(**dict_tournament) for dict_tournament in self.tournaments_table]
 
@@ -234,23 +235,23 @@ class DataBaseTinyDB(object):
         """
         Récupère un tournoi par son index en base de données.
         :param doc_id: int
-        :return: instance de classe Tournament
+        :return: Tournament
         """
         return Tournament(**self.tournaments_table.get(doc_id=doc_id))
 
     def get_tournaments_docs_id(self):
         """
         Récupère l'ensemble des index des tournois de la base de données.
-        :return: liste contenant des int
+        :return: list[int]
         """
         return [dict_tournament.doc_id for dict_tournament in self.tournaments_table]
 
     def update_tournament(self, tournament, doc_id):
         """
         Met a jour les valeurs d'un tournoi en base de données par son index.
-        :param tournament: instance de classe Tournament
+        :param tournament: instance de tournoi
         :param doc_id: int
-        :return: Aucun
+        :return: None
         """
         dict_tournament = serialized_tournament(tournament)
         for k, v in dict_tournament.items():
@@ -259,7 +260,7 @@ class DataBaseTinyDB(object):
     def add_player(self, player):
         """
         Ajoute un joueur en base de données et retourne son index.
-        :param player: instance de classe Player
+        :param player: instance de joueur
         :return: int
         """
         return self.players_table.insert(serialized_player(player))
@@ -267,7 +268,7 @@ class DataBaseTinyDB(object):
     def get_players(self):
         """
         Récupère l'ensemble des joueurs de la base de données.
-        :return: liste contenant des instances de classe Player
+        :return: list[Player]
         """
         return [Player(**dict_player) for dict_player in self.players_table]
 
@@ -275,21 +276,21 @@ class DataBaseTinyDB(object):
         """
         Récupère un joueur par son index en base de données.
         :param doc_id: int
-        :return: instance de classe Player
+        :return: Player
         """
         return Player(**self.players_table.get(doc_id=doc_id))
 
     def get_players_docs_id(self):
         """
         Récupère l'ensemble des index des joueurs de la base de données.
-        :return: liste contenant des int
+        :return: list[int]
         """
         return [dict_player.doc_id for dict_player in self.players_table]
 
     def get_doc_id_by_player(self, player):
         """
         Récupère l'index en base de données d'un joueur en particulier.
-        :param player: instance de classe Player
+        :param player: instance de joueur
         :return: int
         """
         return self.players_table.get(
@@ -297,9 +298,9 @@ class DataBaseTinyDB(object):
 
     def check_if_tournament_already_exist(self, tournament):
         """
-        Vérifie si un tournoi existe deja en base de données.
-        :param tournament: instance de classe Tournament
-        :return: Aucun
+        Vérifie si un tournoi existe déjà en base de données.
+        :param tournament: instance de tournoi
+        :return: None
         """
         if self.tournaments_table.contains(
                 (where('name') == tournament.name) & (where('location') == tournament.location)
@@ -308,9 +309,9 @@ class DataBaseTinyDB(object):
 
     def check_if_player_already_exist(self, player):
         """
-        Vérifie si un joueur existe deja en base de données.
-        :param player: instance de classe Player
-        :return: Aucun
+        Vérifie si un joueur existe déjà en base de données.
+        :param player: instance de joueur
+        :return: None
         """
         if self.players_table.contains(
                 (where('last_name') == player.last_name) & (where('first_name') == player.first_name)):
@@ -319,7 +320,7 @@ class DataBaseTinyDB(object):
     def check_if_tournament_table_is_empty(self):
         """
         Vérifie qu'il existe au moins un tournoi en base de données.
-        :return: Aucun
+        :return: None
         """
         if not self.tournaments_table.all():
             raise TournamentTableIsEmptyError()
@@ -327,7 +328,7 @@ class DataBaseTinyDB(object):
     def check_if_player_table_is_empty(self):
         """
         Vérifie qu'il existe au moins un joueur en base de données.
-        :return: Aucun
+        :return: None
         """
         if not self.players_table.all():
             raise PlayerTableIsEmptyError()
@@ -338,7 +339,7 @@ DATABASE = DataBaseTinyDB()
 
 class Player(object):
     """
-    Classe qui représente le modele de donnée pour les joueurs.
+    Classe qui représente le modèle de données pour les joueurs.
     """
 
     def __init__(self, last_name, first_name, birthdate, gender, ranking, points=0):
@@ -357,7 +358,7 @@ class Player(object):
 
 class Round(object):
     """
-    Classe qui représente le modele de donnée pour les tours de matchs.
+    Classe qui représente le modèle de données pour les tours de matches.
     """
 
     def __init__(self, name, start_date=None, end_date=None, closed=False, matches=None):
@@ -377,9 +378,9 @@ class Round(object):
 
     def initialise_round(self, paired_players):
         """
-        Initialisation des matches du round
-        :param paired_players: liste de tuples contenant des pairs d'instances de classe Player.
-        :return: Aucun
+        Initialisation des matches du round.
+        :param paired_players: list[tuple[Player,Player]], représentant les matches du round
+        :return: None
         """
         for p1, p2 in paired_players:
             self.matches.append(([p1, 0], [p2, 0]))
@@ -388,19 +389,19 @@ class Round(object):
         """
         Récupères les deux joueurs d'un match en particulier.
         :param index_match: int
-        :return: tuple contenant deux instances de classe Player
+        :return: tuple[Player,Player]
         """
         (p1, s1), (p2, s2) = self.matches[index_match]
         return p1, p2
 
     def set_result(self, p1, p2, s1, index_match):
         """
-        Affecte les résultat d'un match en particulier.
-        :param p1: instance de classe Player 1
-        :param p2: instance de classe Player 2
-        :param s1: int score joueur 1
+        Affecte les résultats d'un match en particulier.
+        :param p1: Player, représentant l'instance du joueur 1
+        :param p2: Player, représentant l'instance du joueur 2
+        :param s1: int, représentant le score du joueur 1
         :param index_match: int
-        :return: Aucun
+        :return: None
         """
         s2 = get_scores_player_2(s1)
         self.matches[index_match] = ([p1, s1], [p2, s2])
@@ -418,7 +419,7 @@ class Round(object):
     def close_round(self):
         """
         Effectue les opérations de clôture du round.
-        :return: Aucun
+        :return: None
         """
         self.check_if_close_round_is_valid()
         self.end_date = get_date()
@@ -426,8 +427,8 @@ class Round(object):
 
     def check_if_close_round_is_valid(self):
         """
-        Vérifie que la cloture du round est possible.
-        :return: Aucun
+        Vérifie que la clôture du round est possible.
+        :return: None
         """
         if self.closed:
             raise RoundClosedError()
@@ -438,9 +439,9 @@ class Round(object):
     def check_if_pairing_is_valid(self, player_1, player_2):
         """
         Vérifie que l'association des deux joueurs pour un match est possible.
-        :param player_1: instance de classe Player 1
-        :param player_2: instance de classe Player 2
-        :return: Aucun
+        :param player_1: Player, représentant l'instance du joueur 1
+        :param player_2: Player, représentant l'instance du joueur 2
+        :return: None
         """
         for (p1, s1), (p2, s2) in self.matches:
             if p1 in (player_1, player_2) and p2 in (player_1, player_2):
@@ -449,7 +450,7 @@ class Round(object):
     def check_if_pairings_is_valid(self, paired_players):
         """
         Vérifie que l'association des pairs de joueurs pour des matches soit possible.
-        :param paired_players: liste de tuples contenant des pairs d'instances de classe Player
+        :param paired_players: list[tuple[Player,Player]], représentant les matches du round
         :return: boolean
         """
         for p1, p2 in paired_players:
@@ -462,7 +463,7 @@ class Round(object):
 
 class Tournament(object):
     """
-    Classe qui représente le modele de donnée pour les tournois.
+    Classe qui représente le modèle de données pour les tournois.
     """
     NUMBER_PLAYER = 8
 
@@ -486,7 +487,7 @@ class Tournament(object):
     def init_tournament(self):
         """
         Initialise si besoin les instances des joueurs participant au tournoi et leur points.
-        :return: Aucun
+        :return: None
         """
         if self.indices_players:
             self.constructs_players()
@@ -496,7 +497,7 @@ class Tournament(object):
         """
         Ajoute une instance de joueur au tournoi par son index en base de données.
         :param index: int
-        :return: Aucun
+        :return: None
         """
         self.check_if_number_player_to_add_is_valid(1)
         self.indices_players.append(index)
@@ -505,8 +506,8 @@ class Tournament(object):
     def add_players_from_database(self, indexes):
         """
         Ajoute des instances de joueur au tournoi par leur index en base de données.
-        :param indexes: liste contenant des int
-        :return: Aucun
+        :param indexes: list[int]
+        :return: None
         """
         self.check_if_number_player_to_add_is_valid(len(indexes))
         for index in indexes:
@@ -515,14 +516,14 @@ class Tournament(object):
     def constructs_players(self):
         """
         Construit les instances des joueurs participant au tournoi.
-        :return: Aucun
+        :return: None
         """
         self.players = [DATABASE.get_player_by_id(doc_id) for doc_id in self.indices_players]
 
     def construct_players_points(self):
         """
         Construit les points des joueurs avec les résultats des matches des rounds précédents.
-        :return: Aucun
+        :return: None
         """
         for round in self.rounds:
             for match in round.matches:
@@ -533,9 +534,9 @@ class Tournament(object):
     def set_points(self, player, score):
         """
         Ajoute le score d'un match d'un joueur a ses points dans le tournoi.
-        :param player: instance de classe Player
+        :param player: instance de joueur
         :param score: float, int
-        :return: Aucun
+        :return: None
         """
         for p in self.players:
             if p == player:
@@ -544,16 +545,16 @@ class Tournament(object):
     def get_players(self):
         """
         Récupère les joueurs participant au tournoi.
-        :return: liste des instances de classe Player
+        :return: list[Player]
         """
         self.check_if_players_exist()
         return self.players
 
     def create_round(self, name):
         """
-        Crée et ajoute une instance de classe Round au tournoi.
+        Crée et ajoute un round au tournoi.
         :param name: string
-        :return: Aucun
+        :return: None
         """
         self.check_if_number_player_for_start_is_valid()
         self.check_if_create_round_is_valid()
@@ -571,7 +572,7 @@ class Tournament(object):
     def get_rounds(self):
         """
         Récupère les rounds du tournoi.
-        :return: liste des instances de classe Round
+        :return: list[Round]
         """
         self.check_if_round_exist()
         return self.rounds
@@ -579,7 +580,7 @@ class Tournament(object):
     def get_last_round(self):
         """
         Récupère le round courant.
-        :return: instance de classe Round
+        :return: Round
         """
         return self.get_rounds()[-1]
 
@@ -592,8 +593,8 @@ class Tournament(object):
 
     def close_round(self):
         """
-        Cloture le dernier round créé du tournoi et affecte les résultats aux instances des joueurs correspondants.
-        :return: Aucun
+        Clôture le dernier round créé du tournoi et affecte les résultats aux instances des joueurs correspondants.
+        :return: None
         """
         self.rounds[-1].close_round()
         for match in self.rounds[-1].matches:
@@ -604,7 +605,7 @@ class Tournament(object):
     def set_classification(self):
         """
         Tri les instances des joueurs par points, puis par classement en cas d'égalité.
-        :return: Aucun
+        :return: None
         """
         self.players.sort(key=lambda p: p.points, reverse=True)
         self.players = [list(g) for k, g in itertools.groupby(self.players, key=lambda p: p.points)]
@@ -615,21 +616,21 @@ class Tournament(object):
     def get_pair(self):
         """
         Associe les instances des joueurs 2 a 2 en partant du bas.
-        :return: liste contenant des listes contenant des pairs d'instances de classe Player
+        :return: list[list[Player,Player]]
         """
         return [self.players[i:i + 2] for i in range(0, Tournament.NUMBER_PLAYER, 2)]
 
     def first_pairing(self):
         """
         Associe les joueurs pour le premier round.
-        :return: liste contenant des tuples contenant des pairs d'instances de classe Player
+        :return: list[tuple[Player,Player]]
         """
         return [(self.players[i], self.players[i + 4]) for i in range(int(len(self.players) / 2))]
 
     def get_new_pairings(self):
         """
         Récupère l'association des joueurs pour les matchs du round suivant.
-        :return: liste contenant des tuples contenant des pairs d'instances de classe Player
+        :return: list[tuple[Player,Player]]
         """
         offsets = get_all_offsets()
         for m in offsets:
@@ -651,16 +652,15 @@ class Tournament(object):
         """
         Vérifie qu'on puisse ajouter un certain nombre de joueurs au tournoi.
         :param number_new_player: int
-        :return: Aucun
+        :return: None
         """
-
         if len(self.players) + number_new_player > Tournament.NUMBER_PLAYER:
             raise TooManyPlayersError()
 
     def check_if_number_player_for_start_is_valid(self):
         """
         Vérifie qu'on ait assez de joueurs pour commencer le tournoi.
-        :return: Aucun
+        :return: None
         """
         if len(self.players) < Tournament.NUMBER_PLAYER:
             raise NotEnoughPlayersError()
@@ -668,7 +668,7 @@ class Tournament(object):
     def check_if_create_round_is_valid(self):
         """
         Vérifie qu'on puisse créer un nouveau round.
-        :return: Aucun
+        :return: None
         """
         try:
             if not self.rounds[-1].closed:
@@ -681,7 +681,7 @@ class Tournament(object):
     def check_if_players_exist(self):
         """
         Vérifie qu'il existe au moins un joueur dans le tournoi.
-        :return: Aucun
+        :return: None
         """
         if not self.players:
             raise PlayersInTournamentEmptyError()
@@ -689,7 +689,7 @@ class Tournament(object):
     def check_if_round_exist(self):
         """
         Vérifie qu'il existe au moins un round dans le tournoi.
-        :return: Aucun
+        :return: None
         """
         try:
             self.rounds[-1]
@@ -698,8 +698,8 @@ class Tournament(object):
 
     def check_if_pairings_is_valid(self, paired_players):
         """
-        Vérifie que l'association des joueur est possible.
-        :param paired_players: liste contenant des tuples contenant des pairs d'instances de classe Player
+        Vérifie que l'association des joueurs est possible.
+        :param paired_players: list[tuple[Player,Player]]
         :return: boolean
         """
         for round in self.rounds:
