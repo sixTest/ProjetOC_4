@@ -67,11 +67,13 @@ class InputDocIdTournamentError(InputError):
 
 
 class InputDocIdPlayerError(InputError):
-    def __init__(self):
-        pass
+    def __init__(self, doc_ids):
+        self.doc_ids = doc_ids
 
     def __str__(self):
-        return "L'identifiant du joueur est inconnue."
+        if len(self.doc_ids) > 1:
+            return f"Les identifiants {','.join(self.doc_ids)} sont inconnues."
+        return f"L'identifiant {str(self.doc_ids[0])} sont inconnues."
 
 
 class InputParamCommandShowPlayers(InputError):
@@ -194,7 +196,7 @@ def check_command_is_valid(key_cmd, key_commands):
     """
     Vérifie que l'input d'une commande est valide.
     :param key_cmd: string
-    :param key_commands: liste contenant les index (int) des commandes disponibles
+    :param key_commands: list[int], représentant les index des commandes disponibles
     :return: int
     """
     if not check_if_input_is_number(key_cmd):
@@ -208,7 +210,7 @@ def check_choice_tournament_is_valid(doc_id, docs_id):
     """
     Vérifie que l'input de choix d'un index de tournoi est valide.
     :param doc_id: string
-    :param docs_id: liste contenant les index (int) des tournois disponibles en base de données.
+    :param docs_id: list[int], représentant les index des tournois en base de données.
     :return: int
     """
     if not check_if_input_is_number(doc_id):
@@ -221,16 +223,19 @@ def check_choice_tournament_is_valid(doc_id, docs_id):
 def check_choices_players_is_valid(string, doc_ids, doc_ids_players_in_tournament):
     """
     Vérifie que l'input du choix multiple de joueurs est valide.
-    :param string: string représentant le choix multiple d'index de joueur séparé par des virgules
-    :param doc_ids: liste contenant les index (int) des joueurs disponibles en base de données.
-    :param doc_ids_players_in_tournament: liste contenant les index (int) des joueurs présent dans le tournoi
-    :return: liste contenant les index (int) des joueurs choisis en base de données.
+    :param string: string, représentant le choix multiple d'index de joueur séparé par des virgules
+    :param doc_ids: list[int], représentant les index des joueurs en base de données.
+    :param doc_ids_players_in_tournament: list[int], représentant les index en base de données des joueurs du tournoi
+    :return: list[int], représentant les index des joueurs choisis en base de données.
     """
+    doc_id_errs = []
     for doc_id in string.split(','):
         if not check_if_input_is_number(doc_id):
-            raise InputDocIdPlayerError()
-        if int(doc_id) not in doc_ids:
-            raise InputDocIdPlayerError()
+            doc_id_errs.append(doc_id)
+        elif not check_if_input_is_in(int(doc_id), doc_ids):
+            doc_id_errs.append(doc_id)
+    if doc_id_errs:
+        raise InputDocIdPlayerError(doc_id_errs)
     return [int(doc_id) for doc_id in string.split(',') if int(doc_id) not in doc_ids_players_in_tournament]
 
 
@@ -249,8 +254,8 @@ def sort_players(param, players):
     """
     Tri les joueurs de manière alphabétique ou par classement.
     :param param: string
-    :param players: liste contenant des instances de joueurs
-    :return: Aucun
+    :param players: list[Player]
+    :return: None
     """
     if param == 'A':
         players.sort(key=lambda player: player.last_name)
@@ -274,8 +279,8 @@ def get_inputs_for_tournament_parameters():
     Récupère l'ensemble des inputs pour la création d'un tournoi.
     :return: tuple
     """
-    name = view.get_input('Nom du tournois', format_view=view.format_input_parameters)
-    location = view.get_input('Lieu du tournois', format_view=view.format_input_parameters)
+    name = view.get_input('Nom du tournois', check_if_input_is_empty, format_view=view.format_input_parameters)
+    location = view.get_input('Lieu du tournois', check_if_input_is_empty, format_view=view.format_input_parameters)
 
     date = view.get_input('Date du tournoi (Ex : 2020-01-01)',
                           check_date_input, format_view=view.format_input_parameters)
@@ -295,8 +300,8 @@ def get_inputs_for_player_parameters():
     Récupère l'ensemble des inputs pour la création d'un joueur.
     :return: tuple
     """
-    last_name = view.get_input('Nom du joueur', format_view=view.format_input_parameters)
-    first_name = view.get_input('Prénom du joueur', format_view=view.format_input_parameters)
+    last_name = view.get_input('Nom du joueur', check_if_input_is_empty, format_view=view.format_input_parameters)
+    first_name = view.get_input('Prénom du joueur', check_if_input_is_empty, format_view=view.format_input_parameters)
 
     birthdate = view.get_input('Date de naissance du joueur (Ex: 2000-01-01)', check_date_input,
                                format_view=view.format_input_parameters)
@@ -341,7 +346,7 @@ class Controller(object):
         """
         Affiche les vues, récupère les commandes, exécute les commandes et boucle
         tant que l'utilisateur n'a pas quitté.
-        :return: Aucun
+        :return: None
         """
         while not self.stop:
             os.system('cls')
@@ -356,15 +361,15 @@ class Controller(object):
 
     def apply_command(self, cmd_key):
         """
-        Execute une commande par son index 'cmd_key'.
+        Execute une commande par son index.
         :param cmd_key: int
-        :return: Aucun
+        :return: None
         """
         self.get_function(cmd_key)()
 
     def get_function(self, cmd_key):
         """
-        Récupère la fonction de la commande correspondante a l'index 'cmd_key'
+        Récupère la fonction d'une commande grace à son index
         :param cmd_key: int
         :return: fonction
         """
@@ -372,7 +377,7 @@ class Controller(object):
 
     def get_menu(self):
         """
-        Récupère le menu qui doit etre affiché.
+        Récupère le menu qui doit être affiché.
         :return: dictionnaire
         """
         return self.main_menu if not self.focus_tournament else self.sub_menu
@@ -380,7 +385,7 @@ class Controller(object):
     def get_keys_commands_available(self):
         """
         Récupère les index des commandes du menu.
-        :return: liste contenant des int
+        :return: list[int]
         """
         return [k for k, v in self.get_menu().items()]
 
@@ -389,7 +394,7 @@ class Controller(object):
         Affecte l'affichage de la zone output.
         :param output_function: fonction d'affichage
         :param output_params: paramètres de la fonction d'affichage
-        :return: Aucun
+        :return: None
         """
         self.output_function = output_function
         self.output_params = output_params
@@ -397,7 +402,7 @@ class Controller(object):
     def reset_output(self):
         """
         Reset les paramètres d'affichage de la zone output.
-        :return:
+        :return: None
         """
         self.output_function = None
         self.output_params = None
@@ -405,7 +410,7 @@ class Controller(object):
     def return_to_main_menu(self):
         """
         Reset le tournoi courant et les paramètres d'affichage de la zone output.
-        :return: Aucun
+        :return: None
         """
         self.focus_tournament = None
         self.reset_output()
@@ -413,14 +418,14 @@ class Controller(object):
     def exit(self):
         """
         Permet de sortir de la fonction start.
-        :return: Aucun
+        :return: None
         """
         self.stop = True
 
     def create_tournament(self):
         """
         Crée un tournoi et l'affecte à l'attribut qui definit le tournoi courant.
-        :return: Aucun
+        :return: None
         """
         tournament = model.Tournament(*get_inputs_for_tournament_parameters())
         try:
@@ -435,7 +440,7 @@ class Controller(object):
         """
         Affiche la vue de séléction d'un tournoi parmis les tournois de la base de données.
         Récupère un tournoi et l'affecte à l'attribut qui definit le tournoi courant.
-        :return: Aucun
+        :return: None
         """
         try:
             self.db.check_if_tournament_table_is_empty()
@@ -452,7 +457,7 @@ class Controller(object):
     def export_tournament(self):
         """
         Exporte ou met a jour le tournoi courant dans la base de données.
-        :return: Aucun
+        :return: None
         """
         if self.focus_tournament_doc_id:
             self.db.update_tournament(self.focus_tournament, self.focus_tournament_doc_id)
@@ -462,7 +467,7 @@ class Controller(object):
     def add_player_in_database(self):
         """
         Ajoute un joueur en base de données.
-        :return: Aucun
+        :return: None
         """
         player = model.Player(*get_inputs_for_player_parameters())
         try:
@@ -476,7 +481,7 @@ class Controller(object):
         """
         Affiche la vue de séléction des joueurs parmis les joueurs en base de données.
         Récupère les joueurs sélectionnés et les affectes au tournoi courant.
-        :return: Aucun
+        :return: None
         """
         try:
             self.db.check_if_player_table_is_empty()
@@ -498,7 +503,7 @@ class Controller(object):
     def create_round(self):
         """
         Ajoute un round au tournoi courant.
-        :return: Aucun
+        :return: None
         """
         try:
             name = view.get_input('Nom du round', check_if_input_is_empty, format_view=view.format_input_parameters)
@@ -510,7 +515,7 @@ class Controller(object):
     def close_round(self):
         """
         Entre les résultats des matches du dernier round du tournoi courant et clos le round.
-        :return: Aucun
+        :return: None
         """
         try:
             round = self.focus_tournament.get_last_round()
@@ -529,7 +534,7 @@ class Controller(object):
     def show_tournaments_in_database(self):
         """
         Prépare l'affichage des tournois en base de données pour la zone output.
-        :return: Aucun
+        :return: None
         """
         try:
             self.db.check_if_tournament_table_is_empty()
@@ -542,7 +547,7 @@ class Controller(object):
     def show_players(self):
         """
         Prépare l'affichage des joueurs du tournoi courant si il existe ou alors les joueurs de la base de données.
-        :return: Aucun
+        :return: None
         """
         try:
             self.db.check_if_player_table_is_empty()
@@ -563,7 +568,7 @@ class Controller(object):
     def show_rounds(self):
         """
         Prépare l'affichage des rounds pour la zone output.
-        :return: Aucun
+        :return: None
         """
         try:
             self.set_output(view.format_output_rounds, self.focus_tournament.get_rounds())
@@ -573,7 +578,7 @@ class Controller(object):
     def show_matches(self):
         """
         Prépare l'affichage des matches de chaque round pour la zone output.
-        :return: Aucun
+        :return: None
         """
         try:
             players_1 = []
