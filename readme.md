@@ -26,4 +26,4 @@ Attention : N'oubliez pas d'exporter le tournoi à tout moment pour sauvegarder 
 
 * Ouvrez un invite de commande
 * Placez vous dans le dossier contenant le fichier app.py
-* Création du rapport : ```flake8 --format=html --htmldir=flake-report --max-line-length=119 model.py view.py controller.py app.py```
+* Création du rapport : ```flake8 model.py view.py controller.py app.py```
